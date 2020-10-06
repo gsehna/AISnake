@@ -68,6 +68,8 @@ public class VitoSlayer : AIBehaviour
         }
 
         forwardHits = new List<RaycastHit2D>();
+
+        transform.parent.name = "Vito Slayer";
     }
 
     public override void Execute()
