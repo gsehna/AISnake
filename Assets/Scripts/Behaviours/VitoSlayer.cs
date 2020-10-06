@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Net.Http.Headers;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "Vito Slayer",
@@ -15,6 +16,7 @@ public class VitoSlayer : AIBehaviour
     public float normalSpeed            = 3.5f;
     public float rotationSensitivity    = 300f;
     public float sightRange             = 7.5f;
+    public float avoidRange             = 3.5f;
     public float maxRange               = 15f;
 
     public float frontAngle             = 45f;
@@ -36,6 +38,17 @@ public class VitoSlayer : AIBehaviour
 
     public override void Init(GameObject own, SnakeMovement ownMove)
     {
+        color = new Gradient();
+        color.colorKeys = new GradientColorKey[]
+        {
+            new GradientColorKey(Color.red, 0f),
+            new GradientColorKey(Color.yellow, 0.2f),
+            new GradientColorKey(Color.green, 0.4f),
+            new GradientColorKey(Color.cyan, 0.6f),
+            new GradientColorKey(Color.blue, 0.8f),
+            new GradientColorKey(Color.magenta, 1f)
+        };
+
         snake = ownMove;
         orbsHolder = GameObject.Find("Orbs").transform;
         renderer = snake.GetComponent<SpriteRenderer>();
@@ -218,19 +231,19 @@ public class VitoSlayer : AIBehaviour
 
         ContactFilter2D filter = new ContactFilter2D();
         filter.useTriggers = true;
-        Physics2D.Raycast(transform.position + (Vector3)direction, direction, filter, hits, sightRange);
+        Physics2D.Raycast(transform.position + (Vector3)direction, direction, filter, hits, avoidRange);
 
         if (avoiding)
         {
-            Debug.DrawLine(transform.position + (Vector3)direction, transform.position + (Vector3)direction + ((Vector3)direction * sightRange), Color.red);
+            Debug.DrawLine(transform.position + (Vector3)direction, transform.position + (Vector3)direction + ((Vector3)direction * avoidRange), Color.red);
         }
         else if (!target)
         {
-            Debug.DrawLine(transform.position + (Vector3)direction, transform.position + (Vector3)direction + ((Vector3)direction * sightRange), Color.yellow);
+            Debug.DrawLine(transform.position + (Vector3)direction, transform.position + (Vector3)direction + ((Vector3)direction * avoidRange), Color.yellow);
         }
         else
         {
-            Debug.DrawLine(transform.position + (Vector3)direction, transform.position + (Vector3)direction + ((Vector3)direction * sightRange), Color.green);
+            Debug.DrawLine(transform.position + (Vector3)direction, transform.position + (Vector3)direction + ((Vector3)direction * avoidRange), Color.green);
         }
 
         return hits;
@@ -242,21 +255,26 @@ public class VitoSlayer : AIBehaviour
 
         if (orbsSeen.Count > 0)
         {
-            List<OrbBehavior> orbsInFront = new List<OrbBehavior>();
-            List<OrbBehavior> orbsInSide = new List<OrbBehavior>();
-            List<OrbBehavior> orbsInBack = new List<OrbBehavior>();
+            List<OrbBehavior> orbsInFront   = new List<OrbBehavior>();
+            List<OrbBehavior> orbsInLeft    = new List<OrbBehavior>();
+            List<OrbBehavior> orbsInRight   = new List<OrbBehavior>();
+            List<OrbBehavior> orbsInBack    = new List<OrbBehavior>();
 
             foreach (OrbBehavior orb in orbsSeen)
             {
-                float angle = Vector2.Angle(transform.up, orb.transform.position - transform.position);
+                float angle = Vector2.SignedAngle(transform.up, orb.transform.position - transform.position);
 
-                if (angle <= frontAngle)
+                if (angle >= -frontAngle && angle <= frontAngle)
                 {
                     orbsInFront.Add(orb);
                 }
-                else if (angle <= sideAngle)
+                else if (angle < -frontAngle && angle >= -sideAngle)
                 {
-                    orbsInSide.Add(orb);
+                    orbsInLeft.Add(orb);
+                }
+                else if (angle > frontAngle && angle <= sideAngle)
+                {
+                    orbsInRight.Add(orb);
                 }
                 else
                 {
@@ -264,17 +282,24 @@ public class VitoSlayer : AIBehaviour
                 }
             }
 
-            if (orbsInFront.Count > 0)
+            List<List<OrbBehavior>> allOrbs = new List<List<OrbBehavior>>();
+            allOrbs.Add(orbsInLeft);
+            allOrbs.Add(orbsInRight);
+            allOrbs.Add(orbsInBack);
+
+            List<OrbBehavior> greaterList = orbsInFront;
+
+            for (int i = 0; i < allOrbs.Count; i++)
             {
-                target = GetNearest(orbsInFront);
+                if (allOrbs[i].Count > greaterList.Count)
+                {
+                    greaterList = allOrbs[i];
+                }
             }
-            else if (orbsInSide.Count > 0)
+
+            if (greaterList.Count > 0)
             {
-                target = GetNearest(orbsInSide);
-            }
-            else if (orbsInBack.Count > 0)
-            {
-                target = GetNearest(orbsInBack);
+                target = GetNearest(greaterList);
             }
         }
     }

@@ -50,6 +50,7 @@ MonoBehaviour:
   normalSpeed: 3.5
   rotationSensitivity: 300
   sightRange: 7.5
+  avoidRange: 3.5
   maxRange: 15
   frontAngle: 45
   sideAngle: 135
